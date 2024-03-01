@@ -1,2 +1,2 @@
 # soundripper
-take the audio out of video
+take the audio out of the video

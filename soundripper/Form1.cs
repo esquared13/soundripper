@@ -24,9 +24,16 @@ namespace soundripper
             {
                 string link = txtVideoLink.Text; // sets link equal to text in textbox
 
-                if (isYoutube(link) == true) // call isYoutube method and checks if is true, then converts youtube video to MP3
+                if (await IsYoutube(link)) // call IsYoutube method and checks if is true, then converts youtube video to MP3
                 {
-                    downloadVideo(link);
+                    downloadprogress = new frmDownloadProgress(); // initialize downloadprogress
+                    downloadprogress.Show();
+                    await downloadVideo(link);
+                }
+                else
+                {
+                    System.Media.SystemSounds.Hand.Play();
+                    MessageBox.Show("Please specify a valid link.", "soundripper", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else
@@ -36,34 +43,39 @@ namespace soundripper
             }
         }
 
-        private bool isYoutube(string link) // checks if remote file exists
+        private async Task<bool> IsYoutube(string link) // checks if remote file exists
         {
-            bool result = false;
-            HttpWebResponse response = null;
+            HttpResponseMessage response;
             try
             {
-                HttpWebRequest request = WebRequest.Create(link) as HttpWebRequest;
-                request.Method = "HEAD";  // use head rather than get because it does not download the whole content!
-                using (response = request.GetResponse() as HttpWebResponse)
+                using (var client = new HttpClient())
                 {
-                    result = (response.StatusCode == HttpStatusCode.OK);
+                    client.Timeout = TimeSpan.FromSeconds(10); // sets request timeout
+                    response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, link));
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        return true;
+                    }
                 }
             }
             catch (WebException ex)
             {
                 System.Media.SystemSounds.Hand.Play();
                 MessageBox.Show(ex.Message + "\nUnable to process request.  There may have been an issue with your network connectivity or the site requested.", "soundripper", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
             catch (UriFormatException ex1)
             {
                 System.Media.SystemSounds.Hand.Play();
                 MessageBox.Show(ex1.Message + "\nText entered was not a valid URL.", "soundripper", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
             finally
             {
-                response?.Close(); // closes response
+                response = null;
+                response?.Dispose(); // closes response
             }
-            return result;
+            return false;
         }
         private async Task downloadVideo (string link)
         {
@@ -81,9 +93,12 @@ namespace soundripper
 
                 client.DownloadFileCompleted += (s, e) => // completed event handler; saves file
                 {
-                    var inputFile = new MediaFile { Filename = downloadsfolder + video.FullName };
-                    var outputFilePath = Path.Combine(downloadsfolder, $"{video.FullName}.mp3");
+                    var inputFile = new MediaFile { Filename = filepath };
+                    var outputFilePath = Path.Combine(downloadsfolder, $"{video.Title}.mp3");
                     var outputFile = new MediaFile { Filename = outputFilePath };
+
+                    MessageBox.Show($"Input file path: {inputFile.Filename}");
+                    
 
                     using (var engine = new Engine())
                     {
@@ -93,7 +108,7 @@ namespace soundripper
 
                     if (!chkbxKeepVideo.Checked) // checks that checkbox is not checked
                     {
-                        File.Delete(Path.Combine(downloadsfolder, video.FullName)); // deletes downloaded youtube video
+                        File.Delete(filepath);
                     }
 
                     downloadprogress.Close();
@@ -101,6 +116,7 @@ namespace soundripper
                 };
 
                 await client.DownloadFileTaskAsync(new Uri(video.Uri), filepath);
+
             }
         }
 

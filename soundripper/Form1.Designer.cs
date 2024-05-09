@@ -28,9 +28,11 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmsoundripper));
             lblURL = new Label();
             txtVideoLink = new TextBox();
             btnConvert = new Button();
+            chkbxKeepVideo = new CheckBox();
             SuspendLayout();
             // 
             // lblURL
@@ -59,14 +61,27 @@
             btnConvert.UseVisualStyleBackColor = true;
             btnConvert.Click += btnConvert_Click;
             // 
+            // chkbxKeepVideo
+            // 
+            chkbxKeepVideo.AutoSize = true;
+            chkbxKeepVideo.Location = new Point(14, 56);
+            chkbxKeepVideo.Name = "chkbxKeepVideo";
+            chkbxKeepVideo.Size = new Size(153, 19);
+            chkbxKeepVideo.TabIndex = 3;
+            chkbxKeepVideo.Text = "Keep downloaded video";
+            chkbxKeepVideo.UseVisualStyleBackColor = true;
+            chkbxKeepVideo.CheckedChanged += checkBox1_CheckedChanged;
+            // 
             // frmsoundripper
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(302, 100);
+            Controls.Add(chkbxKeepVideo);
             Controls.Add(btnConvert);
             Controls.Add(txtVideoLink);
             Controls.Add(lblURL);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "frmsoundripper";
             Text = "soundripper";
             ResumeLayout(false);
@@ -78,5 +93,6 @@
         private Label lblURL;
         private TextBox txtVideoLink;
         private Button btnConvert;
+        private CheckBox chkbxKeepVideo;
     }
 }

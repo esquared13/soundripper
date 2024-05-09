@@ -9,7 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="YoutubeExplode" Version="6.3.13" />
+    <PackageReference Include="MediaToolkit" Version="1.1.0.1" />
+    <PackageReference Include="VideoLibrary" Version="3.2.3" />
+    <PackageReference Include="YoutubeExplode" Version="6.3.14" />
+    <PackageReference Include="YoutubeExplode.Converter" Version="6.3.14" />
   </ItemGroup>
 
 </Project>

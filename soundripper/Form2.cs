@@ -16,10 +16,9 @@ namespace soundripper
         {
             InitializeComponent();
         }
-
-        public void updateProgressBar(int percentage) // updates progress bar value based on percentage complete calculated
+        public void UpdateProgressBar(int value) // updates progress bar value based on percentage complete calculated
         {
-            prgbrDownloadProgress.Value = percentage;
+            prgbrDownloadProgress.Invoke((MethodInvoker)(() => prgbrDownloadProgress.Value = value));
         }
     }
 }

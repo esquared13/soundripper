@@ -18,10 +18,13 @@ namespace soundripper
             InitializeComponent();
         }
 
+        
+
         private frmDownloadProgress downloadprogress;
         // add conversion progress here 
         string username = Environment.UserName; // gets username
         string downloadspath;  // finds path to user downloads folder
+
 
 
         private async void btnConvert_Click(object sender, EventArgs e)
@@ -30,10 +33,20 @@ namespace soundripper
             {
                 string link = txtVideoLink.Text; // sets link equal to text in textbox
 
-                if (await IsYoutube(link)) // call IsYoutube method and checks if is true, then converts youtube video to MP3
+                if (await IsYoutube(link)) // call IsYoutube method and checks if is true, then downloads youtube video
                 {
                     downloadspath = $"C:\\Users\\{username}\\Downloads\\";
-                    await DownloadVideo(link, downloadspath);
+                    var youtube = YouTube.Default;
+                    var video = youtube.GetVideo(link);
+                    var videotitle = video.Title;
+                    var path = $"{downloadspath}{videotitle}.mp4"; // mp4 path
+                    var path2 = $"{downloadspath}{videotitle}.mp3"; // mp3 path
+                    downloadprogress = new frmDownloadProgress();
+                    downloadprogress.Show();
+                    await DownloadVideo(video, path, downloadspath, downloadprogress); // download video
+                    downloadprogress.Close();
+                    downloadprogress.Dispose();
+                    await ConvertVideo(path, path2); // convert video to mp3
                 }
                 else
                 {
@@ -83,19 +96,41 @@ namespace soundripper
             return false;
         }
 
-        private static async Task DownloadVideo(string link, string downloadspath) // downloads youtube video
+        private static async Task DownloadVideo(YouTubeVideo video, string path, string downloadspath, frmDownloadProgress downloadProgressForm) // downloads youtube video
         {
-            var youtube = YouTube.Default;
-            var video = youtube.GetVideo(link);
-            var videotitle = video.Title;
-            var path = $"{downloadspath}{videotitle}.mp4";
             var bytes = video.GetBytes();
-            await File.WriteAllBytesAsync(path, bytes); // write file to path
+            // THIS WORKS TO DOWNLOAD FILE await File.WriteAllBytesAsync(path, bytes); // write file to path
+
+            using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write)) // uses progress bar
+            {
+                long totalBytes = bytes.Length;
+                long bytesRead = 0;
+                int bufferSize = 1024;
+                byte[] buffer = new byte[bufferSize];
+                int bytesToRead;
+
+                using (MemoryStream ms = new MemoryStream(bytes))
+                {
+                    while ((bytesToRead = await ms.ReadAsync(buffer, 0, bufferSize)) > 0)
+                    {
+                        await fs.WriteAsync(buffer, 0, bytesToRead);
+                        bytesRead += bytesToRead;
+                        int progress = (int)(((double)bytesRead / totalBytes) * 100);
+                        downloadProgressForm.UpdateProgressBar(progress); // update progress bar in frmDownloadProgress
+                    }
+                }
+            }
         }
 
-
-        private static async Task ConvertVideo()
+        private static async Task ConvertVideo(string inputfilepath, string outputfilepath)
         {
+            using (var engine = new Engine())
+            {
+                var outputfile = new MediaFile(outputfilepath);
+                var inputfile = new MediaFile(inputfilepath);
+                engine.GetMetadata(inputfile);
+                engine.Convert(inputfile, outputfile);
+            }
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)

@@ -5,7 +5,6 @@ using System.Windows.Forms;
 using MediaToolkit; // used nuget
 using MediaToolkit.Model; // used nuget
 using VideoLibrary;
-using YoutubeExplode;
 using System.Diagnostics.Tracing;
 using System.Diagnostics; // used nuget
 
@@ -52,8 +51,9 @@ namespace soundripper
         {
             try
             {
-                var youtube = new YoutubeClient();
-                var video = await youtube.Videos.GetAsync(link);
+                var youtubevideos = YouTube.Default.GetAllVideos(link);
+                
+
                 var username = Environment.UserName;
                 var downloadsfolder = $"C:\\Users\\{username}\\Downloads";
                 var videofilepath = Path.Combine(downloadsfolder, video.Title + ".mp4");
@@ -63,18 +63,13 @@ namespace soundripper
                     downloadprogress.updateProgressBar(percentage);
                 });
                 await DownloadVideo(video.Url, videofilepath, progress, downloadprogress);
-                await ConvertVideo(videofilepath, downloadsfolder);
+                //await ConvertVideo(videofilepath, downloadsfolder);
 
 
                 if (!chkbxKeepVideo.Checked)
                 {
                     File.Delete(videofilepath);
                 }
-
-                ProcessStartInfo startinfo = new ProcessStartInfo
-                {
-                    Arguments = downloadsfolder
-                };
             }
             catch
             {
@@ -118,7 +113,7 @@ namespace soundripper
             return false;
         }
 
-        private static async Task DownloadVideo(string link, string filepath, IProgress<int> progress, frmDownloadProgress downloadprogress)
+        private static async Task DownloadVideo(string link, string videofilepath, IProgress<int> progress, frmDownloadProgress downloadprogress)
         {
             try
             {
@@ -137,7 +132,7 @@ namespace soundripper
                             var ismoretoread = true;
                             int percentage = 0;
 
-                            using (var filestream = new FileStream(filepath, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length, true))
+                            using (var filestream = new FileStream(videofilepath, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length, true))
                             {
                                 do
                                 {

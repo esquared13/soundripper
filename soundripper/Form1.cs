@@ -6,7 +6,8 @@ using MediaToolkit; // used nuget
 using MediaToolkit.Model; // used nuget
 using VideoLibrary;
 using System.Diagnostics.Tracing;
-using System.Diagnostics; // used nuget
+using System.Diagnostics;
+using YoutubeExplode.Channels; // used nuget
 
 namespace soundripper
 {
@@ -19,6 +20,9 @@ namespace soundripper
 
         private frmDownloadProgress downloadprogress;
         // add conversion progress here 
+        string username = Environment.UserName; // gets username
+        string downloadspath;  // finds path to user downloads folder
+
 
         private async void btnConvert_Click(object sender, EventArgs e)
         {
@@ -28,11 +32,8 @@ namespace soundripper
 
                 if (await IsYoutube(link)) // call IsYoutube method and checks if is true, then converts youtube video to MP3
                 {
-                    downloadprogress = new frmDownloadProgress(); // initialize downloadprogress
-                    downloadprogress.Show();
-
-                    await DownloadAndConvertVideo(link, downloadprogress);
-                    
+                    downloadspath = $"C:\\Users\\{username}\\Downloads\\";
+                    await DownloadVideo(link, downloadspath);
                 }
                 else
                 {
@@ -45,37 +46,6 @@ namespace soundripper
                 System.Media.SystemSounds.Hand.Play(); // plays error sound!!!!
                 MessageBox.Show("Please specify a YouTube link.", "soundripper", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private async Task DownloadAndConvertVideo(string link, frmDownloadProgress downloadprogress)
-        {
-            try
-            {
-                var youtubevideos = YouTube.Default.GetAllVideos(link);
-                
-
-                var username = Environment.UserName;
-                var downloadsfolder = $"C:\\Users\\{username}\\Downloads";
-                var videofilepath = Path.Combine(downloadsfolder, video.Title + ".mp4");
-                var progress = new Progress<int>(percentage =>
-                {
-                    // update progress bar using the provided downloadprogress form
-                    downloadprogress.updateProgressBar(percentage);
-                });
-                await DownloadVideo(video.Url, videofilepath, progress, downloadprogress);
-                //await ConvertVideo(videofilepath, downloadsfolder);
-
-
-                if (!chkbxKeepVideo.Checked)
-                {
-                    File.Delete(videofilepath);
-                }
-            }
-            catch
-            {
-                // AHAHAHAH HANDLE EXCEPTIONS MORE EXCEPTIONS LDJKFLSKDJFKLSDFJKLSFJED
-            }
-
         }
 
         private async Task<bool> IsYoutube(string link) // checks if remote file exists
@@ -113,71 +83,19 @@ namespace soundripper
             return false;
         }
 
-        private static async Task DownloadVideo(string link, string videofilepath, IProgress<int> progress, frmDownloadProgress downloadprogress)
+        private static async Task DownloadVideo(string link, string downloadspath) // downloads youtube video
         {
-            try
-            {
-                MessageBox.Show("Starting download...");
-                using (var client = new HttpClient())
-                {
-                    using (var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
-                    {
-                        response.EnsureSuccessStatusCode();
-                        var contentLength = response.Content.Headers.ContentLength;
-
-                        using (var stream = await response.Content.ReadAsStreamAsync())
-                        {
-                            var totalbytesread = 0L;
-                            var buffer = new byte[8192];
-                            var ismoretoread = true;
-                            int percentage = 0;
-
-                            using (var filestream = new FileStream(videofilepath, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length, true))
-                            {
-                                do
-                                {
-                                    var bytesread = await stream.ReadAsync(buffer, 0, buffer.Length);
-                                    if (bytesread == 0)
-                                    {
-                                        ismoretoread = false;
-                                        progress.Report(100);
-                                        continue;
-                                    }
-                                    await filestream.WriteAsync(buffer, 0, bytesread);
-                                    totalbytesread += bytesread;
-
-                                    if (contentLength.HasValue)
-                                    {
-                                        percentage = (int)Math.Round((double)totalbytesread / (double)contentLength.Value * 100);
-                                        progress.Report(percentage);
-                                        downloadprogress.updateProgressBar(percentage); // Use downloadprogress to update the progress bar
-                                    }
-                                } while (ismoretoread);
-                            }
-                        }
-                    }
-                }
-                downloadprogress.Close(); // Close the progress form when download is complete
-            }
-            catch (Exception ex)
-            {
-                System.Media.SystemSounds.Hand.Play();
-                MessageBox.Show($"An error occurred while downloading the video: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            var youtube = YouTube.Default;
+            var video = youtube.GetVideo(link);
+            var videotitle = video.Title;
+            var path = $"{downloadspath}{videotitle}.mp4";
+            var bytes = video.GetBytes();
+            await File.WriteAllBytesAsync(path, bytes); // write file to path
         }
 
 
-        private static async Task ConvertVideo(string videofilepath, string outputfolder)
+        private static async Task ConvertVideo()
         {
-            var inputfile = new MediaFile { Filename = videofilepath };
-            var outputfilepath =  Path.Combine(outputfolder, Path.GetFileNameWithoutExtension(videofilepath) + ".mp3");
-            var outputfile = new MediaFile { Filename = outputfilepath };
-            using (var engine =  new Engine())
-            {
-                engine.GetMetadata(inputfile);
-                engine.Convert (inputfile, outputfile);
-            }
-
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)

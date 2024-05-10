@@ -29,30 +29,39 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmDownloadProgress));
-            prgbDownloadProgress = new ProgressBar();
+            prgbrDownloadProgress = new ProgressBar();
+            fileSystemWatcher1 = new FileSystemWatcher();
+            ((System.ComponentModel.ISupportInitialize)fileSystemWatcher1).BeginInit();
             SuspendLayout();
             // 
-            // prgbDownloadProgress
+            // prgbrDownloadProgress
             // 
-            prgbDownloadProgress.Location = new Point(0, 0);
-            prgbDownloadProgress.Name = "prgbDownloadProgress";
-            prgbDownloadProgress.Size = new Size(397, 23);
-            prgbDownloadProgress.TabIndex = 0;
+            prgbrDownloadProgress.Location = new Point(12, 12);
+            prgbrDownloadProgress.Name = "prgbrDownloadProgress";
+            prgbrDownloadProgress.Size = new Size(397, 23);
+            prgbrDownloadProgress.TabIndex = 0;
+            // 
+            // fileSystemWatcher1
+            // 
+            fileSystemWatcher1.EnableRaisingEvents = true;
+            fileSystemWatcher1.SynchronizingObject = this;
             // 
             // frmDownloadProgress
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(397, 450);
-            Controls.Add(prgbDownloadProgress);
+            ClientSize = new Size(422, 57);
+            Controls.Add(prgbrDownloadProgress);
             Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "frmDownloadProgress";
             Text = "soundripper Download Progress";
+            ((System.ComponentModel.ISupportInitialize)fileSystemWatcher1).EndInit();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private ProgressBar prgbDownloadProgress;
+        private ProgressBar prgbrDownloadProgress;
+        private FileSystemWatcher fileSystemWatcher1;
     }
 }

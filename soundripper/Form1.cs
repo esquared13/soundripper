@@ -4,7 +4,10 @@ using System.IO;
 using System.Windows.Forms;
 using MediaToolkit; // used nuget
 using MediaToolkit.Model; // used nuget
-using VideoLibrary; // used nuget
+using VideoLibrary;
+using YoutubeExplode;
+using System.Diagnostics.Tracing;
+using System.Diagnostics; // used nuget
 
 namespace soundripper
 {
@@ -28,7 +31,9 @@ namespace soundripper
                 {
                     downloadprogress = new frmDownloadProgress(); // initialize downloadprogress
                     downloadprogress.Show();
-                    await downloadVideo(link);
+
+                    await DownloadAndConvertVideo(link, downloadprogress);
+                    
                 }
                 else
                 {
@@ -41,6 +46,41 @@ namespace soundripper
                 System.Media.SystemSounds.Hand.Play(); // plays error sound!!!!
                 MessageBox.Show("Please specify a YouTube link.", "soundripper", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private async Task DownloadAndConvertVideo(string link, frmDownloadProgress downloadprogress)
+        {
+            try
+            {
+                var youtube = new YoutubeClient();
+                var video = await youtube.Videos.GetAsync(link);
+                var username = Environment.UserName;
+                var downloadsfolder = $"C:\\Users\\{username}\\Downloads";
+                var videofilepath = Path.Combine(downloadsfolder, video.Title + ".mp4");
+                var progress = new Progress<int>(percentage =>
+                {
+                    // update progress bar using the provided downloadprogress form
+                    downloadprogress.updateProgressBar(percentage);
+                });
+                await DownloadVideo(video.Url, videofilepath, progress, downloadprogress);
+                await ConvertVideo(videofilepath, downloadsfolder);
+
+
+                if (!chkbxKeepVideo.Checked)
+                {
+                    File.Delete(videofilepath);
+                }
+
+                ProcessStartInfo startinfo = new ProcessStartInfo
+                {
+                    Arguments = downloadsfolder
+                };
+            }
+            catch
+            {
+                // AHAHAHAH HANDLE EXCEPTIONS MORE EXCEPTIONS LDJKFLSKDJFKLSDFJKLSFJED
+            }
+
         }
 
         private async Task<bool> IsYoutube(string link) // checks if remote file exists
@@ -77,47 +117,72 @@ namespace soundripper
             }
             return false;
         }
-        private async Task downloadVideo (string link)
+
+        private static async Task DownloadVideo(string link, string filepath, IProgress<int> progress, frmDownloadProgress downloadprogress)
         {
-            var downloadsfolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments); // grabs user's path to downloads folder
-            var youtube = YouTube.Default;
-            var video = youtube.GetVideo(link); // gets video
-            var filepath = Path.Combine(downloadsfolder, video.FullName); // creates filepath
-
-            using (var client = new WebClient())
+            try
             {
-                client.DownloadProgressChanged += (s, e) => // changed event handler; updates progress bar
+                MessageBox.Show("Starting download...");
+                using (var client = new HttpClient())
                 {
-                    downloadprogress.updateProgressBar(e.ProgressPercentage); // calls updateProgressBar method
-                };
-
-                client.DownloadFileCompleted += (s, e) => // completed event handler; saves file
-                {
-                    var inputFile = new MediaFile { Filename = filepath };
-                    var outputFilePath = Path.Combine(downloadsfolder, $"{video.Title}.mp3");
-                    var outputFile = new MediaFile { Filename = outputFilePath };
-
-                    MessageBox.Show($"Input file path: {inputFile.Filename}");
-                    
-
-                    using (var engine = new Engine())
+                    using (var response = await client.GetAsync(link, HttpCompletionOption.ResponseHeadersRead))
                     {
-                        engine.GetMetadata(inputFile);
-                        engine.Convert(inputFile, outputFile);
+                        response.EnsureSuccessStatusCode();
+                        var contentLength = response.Content.Headers.ContentLength;
+
+                        using (var stream = await response.Content.ReadAsStreamAsync())
+                        {
+                            var totalbytesread = 0L;
+                            var buffer = new byte[8192];
+                            var ismoretoread = true;
+                            int percentage = 0;
+
+                            using (var filestream = new FileStream(filepath, FileMode.Create, FileAccess.Write, FileShare.None, buffer.Length, true))
+                            {
+                                do
+                                {
+                                    var bytesread = await stream.ReadAsync(buffer, 0, buffer.Length);
+                                    if (bytesread == 0)
+                                    {
+                                        ismoretoread = false;
+                                        progress.Report(100);
+                                        continue;
+                                    }
+                                    await filestream.WriteAsync(buffer, 0, bytesread);
+                                    totalbytesread += bytesread;
+
+                                    if (contentLength.HasValue)
+                                    {
+                                        percentage = (int)Math.Round((double)totalbytesread / (double)contentLength.Value * 100);
+                                        progress.Report(percentage);
+                                        downloadprogress.updateProgressBar(percentage); // Use downloadprogress to update the progress bar
+                                    }
+                                } while (ismoretoread);
+                            }
+                        }
                     }
-
-                    if (!chkbxKeepVideo.Checked) // checks that checkbox is not checked
-                    {
-                        File.Delete(filepath);
-                    }
-
-                    downloadprogress.Close();
-
-                };
-
-                await client.DownloadFileTaskAsync(new Uri(video.Uri), filepath);
-
+                }
+                downloadprogress.Close(); // Close the progress form when download is complete
             }
+            catch (Exception ex)
+            {
+                System.Media.SystemSounds.Hand.Play();
+                MessageBox.Show($"An error occurred while downloading the video: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+
+        private static async Task ConvertVideo(string videofilepath, string outputfolder)
+        {
+            var inputfile = new MediaFile { Filename = videofilepath };
+            var outputfilepath =  Path.Combine(outputfolder, Path.GetFileNameWithoutExtension(videofilepath) + ".mp3");
+            var outputfile = new MediaFile { Filename = outputfilepath };
+            using (var engine =  new Engine())
+            {
+                engine.GetMetadata(inputfile);
+                engine.Convert (inputfile, outputfile);
+            }
+
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)
